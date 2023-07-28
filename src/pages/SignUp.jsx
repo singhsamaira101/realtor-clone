@@ -1,7 +1,11 @@
 import React, { useState, } from 'react'
 import {AiFillEyeInvisible, AiFillEye} from "react-icons/ai"
-import { Link} from "react-router-dom";
+import { Link, useNavigate} from "react-router-dom";
 import OAuth from '../components/OAuth';
+import {createUserWithEmailAndPassword, getAuth, updateProfile} from "firebase/auth"
+import{db} from "../firebase"
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import {toast} from "react-toastify"
 
 export default function SignUp() {
     const [showPassword, setShowPassword] = useState(false);
@@ -10,13 +14,35 @@ export default function SignUp() {
         email: "",
         password:"",
     });
+    
     const {name, email, password} = formData;
+    const navigate = useNavigate();
     function onChange(e) {
         setFormData((prevState) => ({
             ...prevState,
             [e.target.id]: e.target.value,
 
         }))
+    }
+    async function onSubmit(e) {
+      e.preventDefault()
+
+      try {
+        const auth = getAuth();
+        const userCredential = await createUserWithEmailAndPassword(auth,email,password);
+        updateProfile(auth.currentUser, {
+          displayName:name
+        })
+        const user = userCredential.user;
+        const formDataCopy = {...formData}
+        delete formDataCopy.password
+        formDataCopy.timestamp = serverTimestamp();
+        await setDoc(doc(db, "users", user.uid), formDataCopy);
+        // toast.success("Sign up was successful")
+        navigate("/");
+      } catch (error) {
+        toast.error("Something went wrong")
+      }
     }
   return (
     <section>
@@ -27,7 +53,7 @@ export default function SignUp() {
                 className="w-full rounded-2xl" />
             </div>
             <div className="w-full md:w-[67%] lg:w-[40%] lg:ml-20" >
-                <form>
+                <form onSubmit={onSubmit}>
                   <input type="text" id="name" placeholder='Full Name'
                         value={name} onChange={onChange}
                         className="mb-6 w-full px-4 py-2 text-xl 
@@ -76,7 +102,7 @@ export default function SignUp() {
                     rounded shadow-md hover:bg-blue-700 hover:shadow-lg
                     transition duration-150 ease-in-out
                     active:bg-blue-800"
-                    type="submit">Sign In</button>
+                    type="submit">Sign Up</button>
                   <div className="flex my-4 items-center 
                     before:border-t 
                     before:flex-1 
